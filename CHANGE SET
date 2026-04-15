@@ -1,0 +1,106 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+local expSet = false
+local busy = false
+
+---
+
+local RepEventFolder = ReplicatedStorage
+	:WaitForChild("\228\186\139\228\187\182")
+	:WaitForChild("\229\133\172\231\148\168")
+
+---
+	
+local switchRelicEvent = RepEventFolder
+	:WaitForChild("\233\129\151\231\137\169")
+	:WaitForChild("\229\136\135\230\141\162\232\163\133\229\164\135\231\187\132")
+
+local switchRuneEvent = RepEventFolder
+	:WaitForChild("\233\152\181\230\179\149")
+	:WaitForChild("\229\136\135\230\141\162\232\163\133\229\164\135\231\187\132")
+	
+local switchDecorEvent = RepEventFolder
+	:WaitForChild("\228\184\150\231\149\140\230\160\145")
+	:WaitForChild("\229\136\135\230\141\162\232\163\133\229\164\135\231\187\132")
+	
+local switchStatueEvent = RepEventFolder
+	:WaitForChild("\229\137\145\233\155\149\229\131\143")
+	:WaitForChild("\229\136\135\230\141\162\231\187\132")
+
+---
+
+local playerGui = player:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("AutoSwitch") then
+	playerGui.AutoSwitch:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoSwitch"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = playerGui
+
+local function createButton(text, xPos)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 90, 0, 30)
+	btn.Position = UDim2.new(0, xPos, 0, 437)
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.Active = true
+	btn.AutoButtonColor = true
+	btn.ZIndex = 9999
+	btn.Parent = gui
+	return btn
+end
+
+---
+
+local expBtn = createButton("Exp Set", 157)
+local dtbBtn = createButton("DTB Set", 255)
+
+expBtn.MouseButton1Click:Connect(function()
+	
+	if not busy and not expSet then 
+		busy = true
+		expBtn.Text = "Switching..."
+		switchRelicEvent:FireServer(1,1)
+		task.wait(0.3)
+		switchRuneEvent:FireServer(1,1)
+		task.wait(0.3)
+		switchDecorEvent:FireServer(1,1)
+		task.wait(0.3)
+		switchStatueEvent:FireServer(1,1)
+		task.wait(0.3)
+    expSet = true
+		expBtn.Text = "damage Set Equipped"
+		dtbBtn.Text = "core set"
+		busy = false
+	end
+end)
+
+dtbBtn.MouseButton1Click:Connect(function()
+	
+	if not busy and expSet then 
+		busy = true
+		dtbBtn.Text = "Switching..."
+		switchRelicEvent:FireServer(2,1)
+		task.wait(0.3)
+		switchRuneEvent:FireServer(2,1)
+		task.wait(0.3)
+		switchDecorEvent:FireServer(2,1)
+		task.wait(0.3)
+		switchStatueEvent:FireServer(2,1)
+		task.wait(0.3)
+		expSet = false
+		dtbBtn.Text = "core Set Equipped"
+		expBtn.Text = "damage set"
+		busy = false
+	end
+end)
