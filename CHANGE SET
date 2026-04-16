@@ -29,6 +29,10 @@ local switchStatueEvent = RepEventFolder
 	:WaitForChild("\229\137\145\233\155\149\229\131\143")
 	:WaitForChild("\229\136\135\230\141\162\231\187\132")
 
+local SwitchSkillEvent = RepEventFolder
+    :WaitForChild("\230\138\128\232\131\189")        
+    :WaitForChild("\229\136\135\230\141\162\232\163\133\229\164\135\231\187\132")
+
 ---
 
 local playerGui = player:WaitForChild("PlayerGui")
@@ -62,8 +66,8 @@ end
 
 ---
 
-local expBtn = createButton("Exp Set", 157)
-local dtbBtn = createButton("DTB Set", 255)
+local expBtn = createButton("Core Set", 157)
+local dtbBtn = createButton("Damage Set", 255)
 
 expBtn.MouseButton1Click:Connect(function()
 	
@@ -78,9 +82,11 @@ expBtn.MouseButton1Click:Connect(function()
 		task.wait(0.3)
 		switchStatueEvent:FireServer(1,1)
 		task.wait(0.3)
-    expSet = true
-		expBtn.Text = "damage Set Equipped"
-		dtbBtn.Text = "core set"
+		SwitchSkillEvent:FireServer(1,1)
+		task.wait(0.3)
+		expSet = true
+		expBtn.Text = "Core Set Equipped"
+		dtbBtn.Text = "Damage set"
 		busy = false
 	end
 end)
@@ -98,9 +104,11 @@ dtbBtn.MouseButton1Click:Connect(function()
 		task.wait(0.3)
 		switchStatueEvent:FireServer(2,1)
 		task.wait(0.3)
+		SwitchSkillEvent:FireServer(2,1)
+		task.wait(0.3)
 		expSet = false
-		dtbBtn.Text = "core Set Equipped"
-		expBtn.Text = "damage set"
+		dtbBtn.Text = "Damage Set Equipped"
+		expBtn.Text = "Core set"
 		busy = false
 	end
 end)
