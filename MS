@@ -1,7 +1,8 @@
 --[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
 ]]
--- WalkSpeed Changer GUI - Compatible with Delta, Fluxus, Arceus X, Codex, KRNL, Hydrogen
+-- WalkSpeed Changer GUI - Tombol Set + Tekan R (default speed 80)
+-- Compatible with Delta, Fluxus, Arceus X, Codex, KRNL, Hydrogen
 
 -- Create GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -28,16 +29,17 @@ Frame.Draggable = true
 
 -- Title
 Title.Parent = Frame
-Title.Text = "WalkSpeed Changer"
+Title.Text = "WalkSpeed Changer [Press R]"
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 
--- Input box
+-- Input box (default value 80)
 Input.Parent = Frame
 Input.PlaceholderText = "Enter speed"
+Input.Text = "80"  -- default langsung 80
 Input.Position = UDim2.new(0.1, 0, 0.4, 0)
 Input.Size = UDim2.new(0.8, 0, 0, 30)
 Input.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
@@ -45,7 +47,7 @@ Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 Input.Font = Enum.Font.SourceSans
 Input.TextSize = 14
 
--- Button
+-- Button Set
 Button.Parent = Frame
 Button.Text = "Set Speed"
 Button.Position = UDim2.new(0.1, 0, 0.7, 0)
@@ -65,12 +67,30 @@ Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
 Minimize.Font = Enum.Font.SourceSansBold
 Minimize.TextSize = 16
 
--- Function: Set speed
-Button.MouseButton1Click:Connect(function()
+-- Fungsi untuk mengatur kecepatan dari nilai di input box
+local function setWalkSpeed()
     local speed = tonumber(Input.Text)
-    local plr = game.Players.LocalPlayer
-    if speed and plr and plr.Character and plr.Character:FindFirstChild("Humanoid") then
-        plr.Character.Humanoid.WalkSpeed = speed
+    local player = game.Players.LocalPlayer
+    if speed and player then
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = speed
+            end
+        end
+    end
+end
+
+-- Event klik tombol Set
+Button.MouseButton1Click:Connect(setWalkSpeed)
+
+-- Keybind: Tekan R untuk memicu setWalkSpeed (sama seperti klik tombol)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.R then
+        setWalkSpeed()
     end
 end)
 
