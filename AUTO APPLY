@@ -1,0 +1,48 @@
+-- Auto Request Join Guild ATHENA (3x)
+-- Jalankan sekali per akun
+
+local function getRemote(path)
+    local current = game:GetService("ReplicatedStorage")
+    for _, name in ipairs(path) do
+        current = current:FindFirstChild(name)
+        if not current then return nil end
+    end
+    return current
+end
+
+-- Remote search guild (dari script pertama)
+local searchRemote = getRemote({
+    "\228\186\139\228\187\182",
+    "\229\133\172\231\148\168",
+    "\229\133\172\228\188\154",
+    "\230\144\156\231\180\162\229\133\172\228\188\154"
+})
+
+-- Remote join guild (dari script kedua)
+local joinRemote = getRemote({
+    "\228\186\139\228\187\182",
+    "\229\133\172\231\148\168",
+    "\229\133\172\228\188\154",
+    "\231\148\179\232\175\183\229\138\160\229\133\165\229\133\172\228\188\154"
+})
+
+if not searchRemote or not joinRemote then
+    warn("❌ Remote event tidak ditemukan! Mungkin game sudah update.")
+    return
+end
+
+-- 1. Cari guild "ATHENA" (optional, tapi tetap dilakukan agar server aware)
+searchRemote:FireServer("ATHENA")
+print("🔍 Mencari guild ATHENA...")
+task.wait(1)
+
+-- 2. Kirim request join sebanyak 3 kali dengan jeda
+local guildUUID = "7adecbc3-ec6f-4c06-98ec-608dfd71c7e6"
+
+for i = 1, 3 do
+    joinRemote:FireServer(guildUUID)
+    print("✉️ Request join ke guild ATHENA #" .. i .. " telah dikirim")
+    task.wait(0.5)  -- jeda antar request agar tidak dianggap spam
+end
+
+print("✅ Selesai! 3 request join telah dikirim.")
