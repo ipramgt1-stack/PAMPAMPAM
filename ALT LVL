@@ -1,0 +1,383 @@
+-- =====================================================
+-- SCRIPT: Auto Spam 5x saat Lobby, lalu naik world berikutnya
+-- - Setiap lobby: spam 5x ke world target saat itu
+-- - Setelah spam, target world otomatis +1
+-- - Jadi terus maju ke world berikutnya (1 -> 2 -> 3 -> ...)
+-- =====================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- ====================== REMOTE PATH ======================
+local worldRemotePath = {
+    "\228\186\139\228\187\182",
+    "\229\133\172\231\148\168",
+    "\229\133\179\229\141\161",
+    "\232\191\155\229\133\165\228\184\150\231\149\140\229\133\179\229\141\161"
+}
+local settingsRemotePath = {
+    "\228\186\139\228\187\182",
+    "\229\133\172\231\148\168",
+    "\232\174\190\231\189\174",
+    "\231\142\169\229\174\182\228\191\174\230\148\185\232\174\190\231\189\174"
+}
+
+local function getRemote(path)
+    local current = ReplicatedStorage
+    for _, name in ipairs(path) do
+        current = current:FindFirstChild(name)
+        if not current then return nil end
+    end
+    return current
+end
+
+local worldRemote = getRemote(worldRemotePath)
+local settingsRemote = getRemote(settingsRemotePath)
+
+if not worldRemote then warn("Remote world tidak ditemukan.") end
+if not settingsRemote then warn("Remote settings tidak ditemukan.") end
+
+-- ====================== FUNGSI DASAR ======================
+local function joinWorld(worldNum)
+    if worldRemote then
+        worldRemote:FireServer(worldNum)
+        print("🌍 Join World " .. worldNum)
+    else
+        warn("Gagal: remote world tidak ada")
+    end
+end
+
+local function toggleAFK()
+    if settingsRemote then
+        settingsRemote:FireServer("\232\135\170\229\138\168\230\136\152\230\150\151")
+        print("🔄 AFK toggled")
+    end
+end
+
+local offSettings = {
+    "\233\159\179\228\185\144",
+    "\231\178\146\229\173\144\231\137\185\230\149\136",
+    "\228\188\164\229\174\179\230\152\190\231\164\186",
+    "\230\138\189\229\165\150\229\138\168\231\148\187",
+    "\233\159\179\230\149\136",
+    "\230\142\137\232\144\189\229\138\168\231\148\187",
+    "\229\135\186\229\148\174\228\186\140\230\172\161\231\161\174\232\174\164",
+    "\230\179\149\229\174\157\229\138\168\231\148\187",
+}
+
+local function applyOffSettings()
+    if not settingsRemote then return end
+    for _, arg in ipairs(offSettings) do
+        settingsRemote:FireServer(arg)
+        task.wait(0.05)
+    end
+    print("🔇 Semua efek dimatikan")
+end
+
+-- ====================== ANTI IDLE ======================
+local antiIdleConn = nil
+local antiIdleActive = false
+
+local function startAntiIdle()
+    if antiIdleConn then return end
+    antiIdleConn = player.Idled:Connect(function()
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(0.1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+    antiIdleActive = true
+    print("🛡️ Anti idle AKTIF")
+end
+
+local function stopAntiIdle()
+    if antiIdleConn then
+        antiIdleConn:Disconnect()
+        antiIdleConn = nil
+    end
+    antiIdleActive = false
+    print("🛡️ Anti idle NONAKTIF")
+end
+
+-- ====================== MONITOR LOBBY & SPAM 5x (NAIK WORLD) ======================
+local monitoring = false
+local lobbyPos = nil
+local currentWorld = 1
+local monitorTask = nil
+
+local function isInLobby()
+    if not lobbyPos then return false end
+    local char = player.Character
+    if not char then return false end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    return (hrp.Position - lobbyPos).Magnitude < 10
+end
+
+local function spam5x(worldNum)
+    if not worldRemote then return end
+    print("🚀 Auto spam 5x join world " .. worldNum .. " (detected lobby)")
+    for i = 1, 5 do
+        joinWorld(worldNum)
+        task.wait(0.05)
+    end
+end
+
+local function startMonitor()
+    if monitoring then stopMonitor() end
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        warn("Karakter tidak ditemukan. Pastikan di lobby sebelum start.")
+        return
+    end
+    lobbyPos = char.HumanoidRootPart.Position
+    print("📍 Posisi lobby disimpan. Akan spam world " .. currentWorld .. " dan naik setiap kali lobby.")
+    monitoring = true
+    monitorTask = task.spawn(function()
+        while monitoring do
+            if isInLobby() then
+                spam5x(currentWorld)
+                currentWorld = currentWorld + 1
+                print("📈 Target world naik menjadi " .. currentWorld)
+                -- Tunggu 2 detik agar tidak spam ulang terlalu cepat
+                task.wait(2)
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
+local function stopMonitor()
+    if monitoring then
+        monitoring = false
+        if monitorTask then task.cancel(monitorTask) end
+        print("⏹️ Monitor dihentikan. World terakhir: " .. (currentWorld - 1))
+    end
+end
+
+-- ====================== GUI ======================
+local gui = Instance.new("ScreenGui")
+gui.Name = "SpamOnLobbyGUI"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui or player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 320, 0, 380)
+frame.Position = UDim2.new(0.5, -160, 0.5, -190)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.Text = "⚡ Auto Spam & Naik World (Drag)"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 14
+title.Parent = frame
+
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.new(0, 25, 0, 25)
+minimize.Position = UDim2.new(1, -30, 0, 2)
+minimize.Text = "-"
+minimize.BackgroundColor3 = Color3.fromRGB(90,90,90)
+minimize.TextColor3 = Color3.new(1,1,1)
+minimize.Font = Enum.Font.SourceSansBold
+minimize.TextSize = 18
+minimize.Parent = frame
+
+-- === WalkSpeed Section ===
+local wsLabel = Instance.new("TextLabel")
+wsLabel.Size = UDim2.new(1, 0, 0, 20)
+wsLabel.Position = UDim2.new(0, 0, 0, 35)
+wsLabel.BackgroundTransparency = 1
+wsLabel.Text = "WalkSpeed (Tekan R)"
+wsLabel.TextColor3 = Color3.new(1,1,1)
+wsLabel.Parent = frame
+
+local wsInput = Instance.new("TextBox")
+wsInput.Size = UDim2.new(0, 100, 0, 28)
+wsInput.Position = UDim2.new(0.1, 0, 0, 55)
+wsInput.BackgroundColor3 = Color3.fromRGB(55,55,55)
+wsInput.TextColor3 = Color3.new(1,1,1)
+wsInput.Text = "80"
+wsInput.Parent = frame
+
+local wsSet = Instance.new("TextButton")
+wsSet.Size = UDim2.new(0, 80, 0, 28)
+wsSet.Position = UDim2.new(0.55, 0, 0, 55)
+wsSet.Text = "Set"
+wsSet.BackgroundColor3 = Color3.fromRGB(70,130,180)
+wsSet.TextColor3 = Color3.new(1,1,1)
+wsSet.Parent = frame
+
+local function setWalkSpeed()
+    local sp = tonumber(wsInput.Text)
+    if sp then
+        local char = player.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = sp end
+        end
+        print("🚶 WalkSpeed set to " .. sp)
+    end
+end
+wsSet.MouseButton1Click:Connect(setWalkSpeed)
+UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    if inp.KeyCode == Enum.KeyCode.R then setWalkSpeed() end
+end)
+
+-- Separator
+local sep = Instance.new("TextLabel")
+sep.Size = UDim2.new(1, 0, 0, 20)
+sep.Position = UDim2.new(0, 0, 0, 90)
+sep.BackgroundTransparency = 1
+sep.Text = "━━━━━━━━━━━━━━━━━━━━"
+sep.TextColor3 = Color3.fromRGB(150,150,150)
+sep.Parent = frame
+
+-- === Manual Join World ===
+local manualLabel = Instance.new("TextLabel")
+manualLabel.Size = UDim2.new(1, 0, 0, 20)
+manualLabel.Position = UDim2.new(0, 0, 0, 110)
+manualLabel.BackgroundTransparency = 1
+manualLabel.Text = "Manual Join World"
+manualLabel.TextColor3 = Color3.new(1,1,1)
+manualLabel.Parent = frame
+
+local manualInput = Instance.new("TextBox")
+manualInput.Size = UDim2.new(0, 100, 0, 28)
+manualInput.Position = UDim2.new(0.1, 0, 0, 130)
+manualInput.BackgroundColor3 = Color3.fromRGB(55,55,55)
+manualInput.TextColor3 = Color3.new(1,1,1)
+manualInput.Text = "1"
+manualInput.PlaceholderText = "Nomor World"
+manualInput.Parent = frame
+
+local manualJoinBtn = Instance.new("TextButton")
+manualJoinBtn.Size = UDim2.new(0, 80, 0, 28)
+manualJoinBtn.Position = UDim2.new(0.55, 0, 0, 130)
+manualJoinBtn.Text = "Join"
+manualJoinBtn.BackgroundColor3 = Color3.fromRGB(70,90,70)
+manualJoinBtn.TextColor3 = Color3.new(1,1,1)
+manualJoinBtn.Parent = frame
+
+manualJoinBtn.MouseButton1Click:Connect(function()
+    local w = tonumber(manualInput.Text)
+    if w then joinWorld(w) else warn("Nomor world tidak valid") end
+end)
+
+-- === Monitor (Auto Spam & Naik) ===
+local monLabel = Instance.new("TextLabel")
+monLabel.Size = UDim2.new(1, 0, 0, 20)
+monLabel.Position = UDim2.new(0, 0, 0, 170)
+monLabel.BackgroundTransparency = 1
+monLabel.Text = "Auto Spam & Naik World (Start dari world)"
+monLabel.TextColor3 = Color3.new(1,1,1)
+monLabel.Parent = frame
+
+local startWorldInput = Instance.new("TextBox")
+startWorldInput.Size = UDim2.new(0, 100, 0, 28)
+startWorldInput.Position = UDim2.new(0.1, 0, 0, 190)
+startWorldInput.BackgroundColor3 = Color3.fromRGB(55,55,55)
+startWorldInput.TextColor3 = Color3.new(1,1,1)
+startWorldInput.Text = "1"
+startWorldInput.PlaceholderText = "World awal"
+startWorldInput.Parent = frame
+
+local monitorBtn = Instance.new("TextButton")
+monitorBtn.Size = UDim2.new(0, 80, 0, 28)
+monitorBtn.Position = UDim2.new(0.55, 0, 0, 190)
+monitorBtn.Text = "Start"
+monitorBtn.BackgroundColor3 = Color3.fromRGB(100,80,60)
+monitorBtn.TextColor3 = Color3.new(1,1,1)
+monitorBtn.Parent = frame
+
+local statusMoni = Instance.new("TextLabel")
+statusMoni.Size = UDim2.new(1, 0, 0, 18)
+statusMoni.Position = UDim2.new(0, 0, 0, 225)
+statusMoni.BackgroundTransparency = 1
+statusMoni.Text = "Status: OFF"
+statusMoni.TextColor3 = Color3.fromRGB(200,200,200)
+statusMoni.Parent = frame
+
+monitorBtn.MouseButton1Click:Connect(function()
+    if monitoring then
+        stopMonitor()
+        monitorBtn.Text = "Start"
+        monitorBtn.BackgroundColor3 = Color3.fromRGB(100,80,60)
+        statusMoni.Text = "Status: OFF"
+    else
+        local w = tonumber(startWorldInput.Text)
+        if not w or w < 1 then
+            warn("World awal tidak valid")
+            return
+        end
+        currentWorld = w
+        startMonitor()
+        monitorBtn.Text = "Stop"
+        monitorBtn.BackgroundColor3 = Color3.fromRGB(130,70,70)
+        statusMoni.Text = "Status: ON (next spam world " .. currentWorld .. ")"
+    end
+end)
+
+-- === Tombol Lainnya ===
+local afkBtn = Instance.new("TextButton")
+afkBtn.Size = UDim2.new(0, 80, 0, 28)
+afkBtn.Position = UDim2.new(0.05, 0, 0, 260)
+afkBtn.Text = "AFK"
+afkBtn.BackgroundColor3 = Color3.fromRGB(80,80,60)
+afkBtn.TextColor3 = Color3.new(1,1,1)
+afkBtn.Parent = frame
+
+local offBtn = Instance.new("TextButton")
+offBtn.Size = UDim2.new(0, 80, 0, 28)
+offBtn.Position = UDim2.new(0.35, 0, 0, 260)
+offBtn.Text = "Off All"
+offBtn.BackgroundColor3 = Color3.fromRGB(70,60,60)
+offBtn.TextColor3 = Color3.new(1,1,1)
+offBtn.Parent = frame
+
+local antiIdleBtn = Instance.new("TextButton")
+antiIdleBtn.Size = UDim2.new(0, 80, 0, 28)
+antiIdleBtn.Position = UDim2.new(0.65, 0, 0, 260)
+antiIdleBtn.Text = "Anti Idle: OFF"
+antiIdleBtn.BackgroundColor3 = Color3.fromRGB(60,70,90)
+antiIdleBtn.TextColor3 = Color3.new(1,1,1)
+antiIdleBtn.Parent = frame
+
+afkBtn.MouseButton1Click:Connect(toggleAFK)
+offBtn.MouseButton1Click:Connect(applyOffSettings)
+antiIdleBtn.MouseButton1Click:Connect(function()
+    if antiIdleActive then
+        stopAntiIdle()
+        antiIdleBtn.Text = "Anti Idle: OFF"
+    else
+        startAntiIdle()
+        antiIdleBtn.Text = "Anti Idle: ON"
+    end
+end)
+
+-- Minimize logic
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    for _, child in pairs(frame:GetChildren()) do
+        if child ~= title and child ~= minimize then
+            child.Visible = not minimized
+        end
+    end
+    if minimized then
+        frame.Size = UDim2.new(0, 320, 0, 30)
+    else
+        frame.Size = UDim2.new(0, 320, 0, 310)
+    end
+end)
+
+print("✅ Script siap. Atur world awal, klik Start. Setiap lobby akan spam 5x, lalu world naik otomatis.")
